@@ -166,8 +166,8 @@ def execute_lora(
 
         print(f"Total loss {loss_meter.avg}")
 
-        # if loss_meter.avg < 1e-3:
-        #     break
+        if loss_meter.avg < 1e-2:
+            break
     return peft_model
 
 
