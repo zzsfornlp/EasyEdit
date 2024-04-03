@@ -206,11 +206,16 @@ def execute_memit(
             targets.double(),
         )
 
-        adj_k = torch.linalg.solve(
-            hparams.mom2_update_weight * cov.double() + layer_ks @ layer_ks.T,
-            layer_ks,
-        )
-        resid = targets / (len(hparams.layers) - i)  # Distribute residual across layers
+        if torch.isnan(layer_ks).any():  # nan will trigger errors with linalg.solve
+            print(f"WARNING: meet nan in layer_ks={layer_ks}")
+            adj_k = torch.zeros_like(layer_ks)
+            resid = torch.zeros_like(targets)
+        else:
+            adj_k = torch.linalg.solve(
+                hparams.mom2_update_weight * cov.double() + layer_ks @ layer_ks.T,
+                layer_ks,
+            )
+            resid = targets / (len(hparams.layers) - i)  # Distribute residual across layers
         upd_matrix = resid @ adj_k.T
 
         # Adjust update matrix shape
