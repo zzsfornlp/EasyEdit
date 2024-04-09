@@ -27,6 +27,26 @@ from .evaluate import evaluate_edit_quality
 
 LOG = get_logger()
 
+class WrappedTokenizer:
+    def __init__(self, tokenizer, add_special_tokens=True):
+        self.tokenizer = tokenizer
+        self.add_special_tokens = add_special_tokens
+
+    def __call__(self, *args, **kwargs):
+        add_special_tokens = kwargs.pop("add_special_tokens", self.add_special_tokens)
+        return self.tokenizer.__call__(*args, add_special_tokens=add_special_tokens, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self.tokenizer, item)
+
+    @property
+    def padding_side(self):
+        return self.tokenizer.padding_side
+
+    @padding_side.setter
+    def padding_side(self, x):
+        self.tokenizer.padding_side = x
+
 class MyEditor:
     @classmethod
     def from_hparams(cls, hparams: HyperParams):
@@ -35,7 +55,7 @@ class MyEditor:
     def __init__(self, hparams: HyperParams):
         assert hparams is not None, print('Error: hparams is None.')
         self.model_name = hparams.model_name
-        self.apply_algo = ALG_DICT[hparams.alg_name]
+        self.apply_algo = ALG_DICT.get(hparams.alg_name, None)
         self.alg_name = hparams.alg_name
         LOG.info("Instantiating model")
         # get model and toker
@@ -100,6 +120,11 @@ class MyEditor:
                 self.tok.padding_side = 'right'
         else:
             self.model, self.tok = self.model_name
+        # --
+        if getattr(hparams, "no_add_special_tokens", False):
+            self.tok = WrappedTokenizer(self.tok, add_special_tokens=False)
+            LOG.info("Wrap tokenizer to get rid of special tokens")
+        # --
         # move model to target
         if hparams.model_parallel:
             hparams.device = str(self.model.device).split(":")[1]
@@ -122,9 +147,13 @@ class MyEditor:
         # --
         # special modes
         ike_helper = None
+        ice_helper = None
         if self.alg_name == "IKE":
             from .editor_ike import IKEHelper
             ike_helper = IKEHelper(self.hparams, self.model, train_insts)
+        elif self.alg_name == "ICE":
+            from .editor_ice import ICEHelper
+            ice_helper = ICEHelper(self.hparams, self.model)
         # --
         # calculate pre results
         if pre_file and os.path.exists(pre_file):
@@ -158,6 +187,9 @@ class MyEditor:
                     LOG.warning("Currently this method (IKE) does not fit well with batch editing!")
                 _prompt_prefix = ike_helper.retrieve_ike_facts(_converted_insts)
                 edited_model, weights_copy = self.model, {}
+            elif self.alg_name == "ICE":
+                _prompt_prefix, edited_model, weights_copy = ice_helper.apply_algo(
+                    self.model, self.tok, _converted_insts, self.hparams)
             else:
                 self.model.train()
                 edited_model, weights_copy = self.apply_algo(

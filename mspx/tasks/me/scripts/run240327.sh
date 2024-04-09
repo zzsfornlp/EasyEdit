@@ -6,9 +6,9 @@
 # debug
 EE_HOME=../EasyEdit/
 MSPX_HOME=../src/
-method=MEMIT
+method=ICE
 #CUDA_VISIBLE_DEVICES=0,1 PYTHONPATH=${EE_HOME}:${MSPX_HOME} python3 -mpdb run_easy_edit.py ...
-CUDA_VISIBLE_DEVICES=0,1 PYTHONPATH=${EE_HOME}:${MSPX_HOME} python3 -mpdb -m mspx.tasks.me.run_me --editing_method=$method --hparams_dir=${method}__Llama-2-7b-hf.yaml --path_test=../dataME/knowedit1.recent_test.json --path_train=../dataME/knowedit1.recent_train.json --output_dir=./ --ds_size 20
+CUDA_VISIBLE_DEVICES=0,1 PYTHONPATH=${EE_HOME}:${MSPX_HOME} python3 -mpdb -m mspx.tasks.me.run_me --editing_method=$method --hparams_dir=${method}__Llama-2-7b-hf.yaml --path_test=../dataME/knowedit1.recent_test.json --path_train=../dataME/knowedit1.recent_train.json --output_dir=./ --prefile_dir=./ --ds_size 20
 
 # --
 # readings
@@ -23,10 +23,12 @@ MSPX_HOME=../src/
 #RUN_NAME=run240330
 RUN_NAME=run240402
 #for method in FT LoRA IKE ROME; do
-for method in MEMIT; do
+#for method in MEMIT; do
+for method in ICE; do
 for ff in knowedit1.recent_test.json:knowedit1.recent_train.json knowedit1.test_cf.json:knowedit1.train_cf.json knowedit1.ZsRE-test-all.json:zsre1.train_10000.json MQuAKE-CF-3k.json:MQuAKE-CF-5k.json MQuAKE-T.json:MQuAKE-CF-5k.json; do
 IFS=: read -r w0 w1 <<< $ff
-echo "PYTHONPATH=${EE_HOME}:${MSPX_HOME} python3 -u -m mspx.tasks.me.run_me --editing_method=$method --hparams_dir=${method}__Llama-2-7b-hf.yaml --path_test=../dataME/$w0 --path_train=../dataME/$w1 --output_dir=${RUN_NAME} >_log_${w0}_${method} 2>&1"
+#echo "PYTHONPATH=${EE_HOME}:${MSPX_HOME} python3 -u -m mspx.tasks.me.run_me --editing_method=$method --hparams_dir=${method}__Llama-2-7b-hf.yaml --path_test=../dataME/$w0 --path_train=../dataME/$w1 --output_dir=${RUN_NAME} >_log_${w0}_${method} 2>&1"
+echo "PYTHONPATH=${EE_HOME}:${MSPX_HOME} python3 -u -m mspx.tasks.me.run_me --editing_method=$method --hparams_dir=${method}__Llama-2-7b-hf.yaml --path_test=../dataME/$w0 --path_train=../dataME/$w1 --output_dir=${RUN_NAME} --prefile_dir=run_prefiles >_log_${w0}_${method} 2>&1"
 done
 done >_cmds.${RUN_NAME}
 python3 -m mspx.scripts.tools.run_para -f _cmds.${RUN_NAME} -n 100 -g 0 1 2 3 4 5 6 7 --default_num_gpus 2
@@ -57,4 +59,13 @@ _log_MQuAKE-T.json_FT:zres': 'E=1.0000||1.0000||1.0000;;R=NA||NA||NA;;P=0.8841||
 _log_MQuAKE-T.json_IKE:zres': 'E=1.0000||1.0000||1.0000;;R=NA||NA||NA;;P=0.9347||0.7511||0.7511;;L=NA||NA||NA'}
 _log_MQuAKE-T.json_LoRA:zres': 'E=1.0000||1.0000||1.0000;;R=NA||NA||NA;;P=0.8848||0.7024||0.7084;;L=NA||NA||NA'}
 _log_MQuAKE-T.json_ROME:zres': 'E=1.0000||1.0000||1.0000;;R=NA||NA||NA;;P=0.5619||0.0005||0.0009;;L=NA||NA||NA'}
+# --
+
+# --
+# use the same set of pre_file?
+mkdir run_prefiles
+for ff in knowedit1__recent_test knowedit1__test_cf knowedit1__ZsRE-test-all MQuAKE-CF-3k MQuAKE-T; do
+  cp run240330/FT_llama-2-7b_${ff}__json.pre_edit.json run_prefiles/fp160_llama-2-7b_${ff}__json.pre_edit.json
+  cp run240330/ROME_llama-2-7b_${ff}__json.pre_edit.json run_prefiles/fp161_llama-2-7b_${ff}__json.pre_edit.json
+done
 # --

@@ -24,7 +24,7 @@ def evaluate_edit_quality(model, model_name: str, hparams: HyperParams, tok: Aut
         items = instance[key0]
         if len(items) == 0:
             continue  # no item to eval!
-        prompts = [z.question for z in items]
+        prompts = [z.prompt for z in items]
         if prompt_prefix is not None:
             prompts = [f"{prompt_prefix}{p}" for p in prompts]
         this_eval_pre = None

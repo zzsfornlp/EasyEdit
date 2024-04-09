@@ -36,6 +36,9 @@ class BaseInst:
     def __getitem__(self, item):
         return self.__dict__[item]
 
+    def __repr__(self):
+        return repr(self.__dict__)
+
     def to_json(self):
         ret = {}
         for k, v in self.__dict__.items():
@@ -58,7 +61,14 @@ class BaseInst:
             _d.update(kwargs)
         return cls(**_d)
 
+PROMPT_TEMPLATES = {
+    "orig": lambda x: x,
+    "qa": lambda x: f"Question: {x}\nAnswer:",
+}
+
 class Item(BaseInst):
+    PROMPT_TEMPLATE_F = (lambda x: x)
+
     def __init__(self, **kwargs):
         self.type: str = ""  # type of this one item
         self.subject: str = ""  # subject item
@@ -69,9 +79,17 @@ class Item(BaseInst):
         self.answer_old_alias: list[str] = []  # old alternative answers
         super().__init__(**kwargs)
 
+    def get_alt_dict(self):
+        d = {"subject": self.subject, "prompt": self.prompt, "target_new": self.answer}  # use self!
+        return d
+
     def format(self):
-        d = {"subject": self.subject, "prompt": self.question, "target_new": self.answer}  # use self!
+        d = self.get_alt_dict()
         return self.format_dict(d)
+
+    @property
+    def prompt(self):
+        return Item.PROMPT_TEMPLATE_F(self.question)
 
     @classmethod
     def format_dict(cls, d):
@@ -80,6 +98,9 @@ class Item(BaseInst):
         ret = " ".join(pieces)
         return ret
 
+    @classmethod
+    def set_prompt_template(cls, template: str):
+        cls.PROMPT_TEMPLATE_F = PROMPT_TEMPLATES[template]
 
 class Instance(BaseInst):
     def __init__(self, **kwargs):
@@ -99,5 +120,5 @@ class Instance(BaseInst):
             setattr(self, k, ([Item.create(**z) for z in v] if isinstance(v, list) else v))
 
     def get_edit_insts(self):  # for previous format!
-        ret = [{"subject": _item.subject, "prompt": _item.question, "target_new": _item.answer} for _item in self.edit]
+        ret = [_item.get_alt_dict() for _item in self.edit]
         return ret
